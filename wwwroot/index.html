@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartBuildingIoT Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --secondary: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --bg: #0f172a;
+            --card: #1e293b;
+            --text: #e2e8f0;
+            --muted: #94a3b8;
+            --border: #334155;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            padding: 1.5rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .header h1::before {
+            content: '🏢';
+        }
+
+        .status {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .status-item {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.875rem;
+        }
+
+        .container {
+            padding: 1.5rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat-card {
+            background: var(--card);
+            padding: 1.25rem;
+            border-radius: 12px;
+            border-left: 4px solid var(--primary);
+        }
+
+        .stat-card.warning {
+            border-left-color: var(--warning);
+        }
+
+        .stat-card.success {
+            border-left-color: var(--secondary);
+        }
+
+        .stat-card.danger {
+            border-left-color: var(--danger);
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .stat-label {
+            color: var(--muted);
+            font-size: 0.875rem;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 1000px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 1.25rem;
+        }
+
+        .card h2 {
+            font-size: 1rem;
+            margin-bottom: 1rem;
+            color: var(--muted);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .sensor-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1rem;
+        }
+
+        .sensor-item {
+            background: var(--bg);
+            padding: 1rem;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid var(--border);
+            transition: transform 0.2s;
+        }
+
+        .sensor-item:hover {
+            transform: translateY(-2px);
+        }
+
+        .sensor-item.anomaly {
+            border-color: var(--danger);
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        .sensor-info h3 {
+            font-size: 0.875rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .sensor-info .location {
+            color: var(--muted);
+            font-size: 0.75rem;
+        }
+
+        .sensor-value {
+            text-align: right;
+        }
+
+        .sensor-value .value {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .sensor-value .unit {
+            color: var(--muted);
+            font-size: 0.75rem;
+        }
+
+        .alert-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .alert-item {
+            background: var(--bg);
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            border-left: 3px solid var(--warning);
+            font-size: 0.875rem;
+        }
+
+        .alert-item.Critical {
+            border-left-color: var(--danger);
+        }
+
+        .alert-time {
+            color: var(--muted);
+            font-size: 0.75rem;
+            margin-top: 0.25rem;
+        }
+
+        .chart-container {
+            height: 300px;
+        }
+
+        .refresh-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .refresh-btn:hover {
+            opacity: 0.9;
+        }
+
+        .badge {
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+        }
+
+        .badge.rising {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--secondary);
+        }
+
+        .badge.falling {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--danger);
+        }
+
+        .badge.stable {
+            background: rgba(148, 163, 184, 0.2);
+            color: var(--muted);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1>SmartBuildingIoT Dashboard</h1>
+        <div class="status">
+            <span class="status-item" id="updateTime">--</span>
+            <button class="refresh-btn" onclick="refresh()">🔄 Refresh</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-card">
+                <div class="stat-value" id="sensorCount">--</div>
+                <div class="stat-label">Active Sensors</div>
+            </div>
+            <div class="stat-card success">
+                <div class="stat-value" id="totalReadings">--</div>
+                <div class="stat-label">Total Readings</div>
+            </div>
+            <div class="stat-card warning">
+                <div class="stat-value" id="anomalyCount">--</div>
+                <div class="stat-label">Anomalies</div>
+            </div>
+            <div class="stat-card danger">
+                <div class="stat-value" id="anomalyRate">--</div>
+                <div class="stat-label">Anomaly Rate</div>
+            </div>
+        </div>
+
+        <div class="main-grid">
+            <div>
+                <div class="card" style="margin-bottom: 1.5rem;">
+                    <h2>📊 Real-time Sensor Data</h2>
+                    <div class="sensor-grid" id="sensorGrid"></div>
+                </div>
+                <div class="card">
+                    <h2>📈 Temperature Trend</h2>
+                    <div class="chart-container"><canvas id="tempChart"></canvas></div>
+                </div>
+            </div>
+            <div>
+                <div class="card" style="margin-bottom: 1.5rem;">
+                    <h2>⚡ Power Forecast</h2>
+                    <div id="forecastList"></div>
+                </div>
+                <div class="card">
+                    <h2>🚨 Recent Alerts</h2>
+                    <div class="alert-list" id="alertList"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let tempChart = null;
+        const tempData = { labels: [], datasets: [{ label: 'Lobby', data: [], borderColor: '#3b82f6', tension: 0.3 }, { label: 'Office', data: [], borderColor: '#10b981', tension: 0.3 }] };
+
+        async function fetchData(url) {
+            const res = await fetch(url);
+            return res.json();
+        }
+
+        async function refresh() {
+            document.getElementById('updateTime').textContent = new Date().toLocaleTimeString();
+
+            // Get readings
+            const readings = await fetchData('/api/sensor/readings');
+            renderSensors(readings);
+            updateChart(readings);
+
+            // Get summary
+            const summary = await fetchData('/api/sensor/summary');
+            document.getElementById('sensorCount').textContent = summary.sensorCount;
+            document.getElementById('totalReadings').textContent = summary.totalReadings;
+            document.getElementById('anomalyCount').textContent = summary.anomalyCount;
+            document.getElementById('anomalyRate').textContent = summary.anomalyRate.toFixed(1) + '%';
+
+            // Get alerts
+            const alerts = await fetchData('/api/analytics/alerts');
+            renderAlerts(alerts);
+
+            // Get forecast
+            const forecast = await fetchData('/api/analytics/forecast');
+            renderForecast(forecast);
+        }
+
+        function renderSensors(readings) {
+            const grid = document.getElementById('sensorGrid');
+            grid.innerHTML = readings.map(s => `
+                <div class="sensor-item ${s.isAnomaly ? 'anomaly' : ''}">
+                    <div class="sensor-info">
+                        <h3>${s.sensorType} - ${s.sensorId}</h3>
+                        <div class="location">📍 ${s.location}</div>
+                    </div>
+                    <div class="sensor-value">
+                        <div class="value">${s.value}</div>
+                        <div class="unit">${s.unit}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderAlerts(alerts) {
+            const list = document.getElementById('alertList');
+            if (alerts.length === 0) {
+                list.innerHTML = '<div style="color: var(--muted);">No recent alerts</div>';
+                return;
+            }
+            list.innerHTML = alerts.slice(0, 10).map(a => `
+                <div class="alert-item ${a.severity}">
+                    <strong>${a.sensorId}</strong>: ${a.message}
+                    <div class="alert-time">${new Date(a.timestamp).toLocaleString()}</div>
+                </div>
+            `).join('');
+        }
+
+        function renderForecast(forecast) {
+            const list = document.getElementById('forecastList');
+            list.innerHTML = forecast.map(f => `
+                <div class="sensor-item" style="margin-bottom: 0.5rem;">
+                    <div><strong>${f.sensorId}</strong><br><small>Current: ${f.current} kW</small></div>
+                    <div style="text-align: right">
+                        <div>→ ${f.predicted} kW</div>
+                        <span class="badge ${f.trend.toLowerCase()}">${f.trend}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updateChart(readings) {
+            const lobby = readings.find(r => r.sensorId === 'TEMP-01');
+            const office = readings.find(r => r.sensorId === 'TEMP-02');
+            const time = new Date().toLocaleTimeString();
+
+            tempData.labels.push(time);
+            tempData.datasets[0].data.push(lobby?.value || 0);
+            tempData.datasets[1].data.push(office?.value || 0);
+
+            if (tempData.labels.length > 20) {
+                tempData.labels.shift();
+                tempData.datasets.forEach(d => d.data.shift());
+            }
+
+            if (!tempChart) {
+                tempChart = new Chart(document.getElementById('tempChart'), {
+                    type: 'line',
+                    data: tempData,
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: { legend: { labels: { color: '#94a3b8' } } },
+                        scales: {
+                            x: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } },
+                            y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }
+                        }
+                    }
+                });
+            } else {
+                tempChart.update();
+            }
+        }
+
+        // Initial load and auto-refresh
+        refresh();
+        setInterval(refresh, 5000);
+    </script>
+</body>
+
+</html>
