@@ -1,0 +1,10 @@
+
+
+# Local credentials and generated private data
+bin/
+obj/
+.env
+.env.*
+!.env.example
+*.user
+*.suo
